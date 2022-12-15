@@ -125,17 +125,119 @@ class DefaultNDArray private constructor
     }
 
     override fun view(): NDArray {
+        //TODO("Not yet implemented")
         return this
     }
 
+    private fun getNextPoint(point: Point, shape: Shape) : DefaultPoint {
+        var c = 1
+        val newArray = IntArray(shape.ndim)
+        for (i in 0 until point.ndim) {
+            newArray[i] = (point.dim(i) + c) % shape.dim(i)
+            c = (point.dim(i) + c) / shape.dim(i)
+        }
+        return DefaultPoint(*newArray)
+    }
+
+    private fun checkDimensions(other: NDArray, offset : Int) : Boolean {
+        for (i in 0 until this.ndim - offset) {
+            if (this.dim(i) != other.dim(i)) {
+                return false
+            }
+        }
+        return true
+    }
+
     override fun add(other: NDArray) {
-        TODO("Not yet implemented")
+        val newArray : MutableMap<Point, Int> = HashMap()
+        if (this.ndim < other.ndim) {
+            throw NDArrayException.IllegalPointDimensionException()
+        }
+        val offset = this.ndim - other.ndim
+        if (!checkDimensions(other, offset)) {
+            throw NDArrayException.IllegalPointDimensionException()
+        }
+        val startPoint = DefaultPoint(*IntArray(this.ndim){ 0 })
+        var point = DefaultPoint(*IntArray(this.ndim){ 0 })
+        do {
+            newArray[point] = this.at(point) + other.at(reducePoint(point, offset))
+            point = getNextPoint(point, this.shape)
+        } while (point != startPoint)
+        newArray.forEach{ (k, v) -> array.merge(k, v) {_, newval -> newval} }
+    }
+
+    private fun reducePoint(defaultPoint: DefaultPoint, offset: Int): DefaultPoint {
+        return DefaultPoint(*defaultPoint.getArray().slice(0 until defaultPoint.ndim - offset).toIntArray())
+    }
+
+    private fun convertToMatrix(ndArray: NDArray) : Array<IntArray> {
+        if (ndArray.ndim == 2) {
+            val array = Array(ndArray.dim(0)) { IntArray(ndArray.dim(1)) }
+            for (i in 0 until ndArray.dim(0)) {
+                for (j in 0 until ndArray.dim(1)) {
+                    array[i][j] = ndArray.at(DefaultPoint(i, j))
+                }
+            }
+            return array
+        }
+        val array = Array(ndArray.dim(0)) {IntArray (1)}
+        for (i in 0 until ndArray.dim(0)) {
+            array[i][0] = ndArray.at(DefaultPoint(i))
+        }
+        return array
+    }
+
+    private fun convertToNDArray2(array: Array<IntArray>) : NDArray {
+        val shape = DefaultShape(array.size, array[0].size)
+        val newArray : MutableMap<Point, Int > = HashMap()
+        for (i in 0 until shape.dim(0)) {
+            for (j in 0 until shape.dim(1)) {
+                newArray[DefaultPoint(i, j)] = array[i][j]
+            }
+        }
+        return DefaultNDArray(0, shape, newArray)
+    }
+    private fun convertToNDArray1(array: Array<IntArray>) : NDArray {
+        val shape = DefaultShape(array.size)
+        val newArray : MutableMap<Point, Int > = HashMap()
+        for (i in 0 until shape.dim(0)) {
+            newArray[DefaultPoint(i)] = array[i][0]
+        }
+        return DefaultNDArray(0, shape, newArray)
     }
 
     override fun dot(other: NDArray): NDArray {
-        TODO("Not yet implemented")
+        if (this.ndim != 2 || other.ndim > 2) {
+            throw NDArrayException.IllegalPointDimensionException()
+        }
+        if (other.ndim == 1 && other.dim(0) == 1) {
+            val newArray : MutableMap<Point, Int> = HashMap()
+            val startPoint = DefaultPoint(*IntArray(2) { 0 })
+            var point = DefaultPoint(*IntArray(2) { 0 })
+            do {
+                newArray[point] = this.at(point) * other.at(startPoint)
+                point = getNextPoint(point, this.shape)
+            } while (point != startPoint)
+            return DefaultNDArray(0, this.shape, newArray)
+        }
+        val matrix1 = convertToMatrix(this)
+        val matrix2 = convertToMatrix(other)
+        if (matrix1[0].size != matrix2.size) {
+            throw NDArrayException.IllegalPointDimensionException()
+        }
+        val matrix3 = Array(matrix1.size) { IntArray(matrix2[0].size) }
+        for (i in matrix1.indices) {
+            for (j in 0 until matrix1[0].size) {
+                for (k in 0 until matrix2[0].size) {
+                    matrix3[i][k] += matrix1[i][j]*matrix2[j][k]
+                }
+            }
+        }
+        if (other.ndim == 2) {
+            return convertToNDArray2(matrix3)
+        }
+        return convertToNDArray1(matrix3)
     }
-
     override val size: Int
         get() = shape.size
     override val ndim: Int
