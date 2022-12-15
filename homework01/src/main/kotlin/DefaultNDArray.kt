@@ -125,8 +125,7 @@ class DefaultNDArray private constructor
     }
 
     override fun view(): NDArray {
-        //TODO("Not yet implemented")
-        return this
+        return DefaultNDArray(defaultValue, shape, array)
     }
 
     private fun getNextPoint(point: Point, shape: Shape) : DefaultPoint {
