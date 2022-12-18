@@ -1,5 +1,7 @@
 package binomial
 
+import com.google.common.collect.Iterators
+
 /*
  * FList - реализация функционального списка
  *
@@ -55,10 +57,53 @@ sealed class FList<T>: Iterable<T> {
      *
      * Также для борьбы с бойлерплейтом были введены функция и свойство nil в компаньоне
      */
+    override fun iterator(): Iterator<T> { return FListIterator(this) }
+    class FListIterator<T>(fList: FList<T>) : Iterator<T> {
+        private var current = fList
+        override fun hasNext(): Boolean {
+            return !current.isEmpty
+        }
+
+        override fun next(): T {
+            if (current.isEmpty) {
+                throw IllegalStateException("You can't use function next() if there is no element left!")
+            }
+            val next = (current as Cons).head
+            current = (current as Cons).tail
+            return next
+        }
+
+    }
     data class Nil<T>(private val dummy: Int=0) : FList<T>() {
+        override val size: Int get() = 0
+        override val isEmpty: Boolean get() = true
+        override fun <U> map(f: (T) -> U): FList<U> { return Nil() }
+        override fun filter(f: (T) -> Boolean): FList<T> { return Nil() }
+        override fun <U> fold(base: U, f: (U, T) -> U): U {return base }
     }
 
     data class Cons<T>(val head: T, val tail: FList<T>) : FList<T>() {
+        override val size: Int
+            get() = Iterators.size(this.iterator())
+        override val isEmpty: Boolean get() = false
+
+        override fun <U> map(f: (T) -> U): FList<U> {
+            return Cons(f(head), tail.map(f))
+        }
+
+        override fun filter(f: (T) -> Boolean): FList<T> {
+            if (f(head)) {
+                return Cons(head, tail.filter(f))
+            }
+            return tail.filter(f)
+        }
+
+        override fun <U> fold(base: U, f: (U, T) -> U): U {
+            if (tail.isEmpty) {
+                return f(base, head)
+            }
+            return tail.fold(f(base, head), f)
+        }
     }
 
     companion object {
@@ -69,6 +114,13 @@ sealed class FList<T>: Iterable<T> {
 
 // конструирование функционального списка в порядке следования элементов
 // требуемая сложность - O(n)
-fun <T> flistOf(vararg values: T): FList<T> {
-    TODO()
+
+fun <T> flistOf(vararg values : T) : FList<T> {
+    return flistOf(values.asList())
+}
+private fun <T> flistOf(values: List<T>): FList<T> {
+    if (values.isEmpty()) {
+        return FList.Nil()
+    }
+    return FList.Cons(values[0], flistOf(values.subList(1, values.size)))
 }
