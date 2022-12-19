@@ -82,16 +82,15 @@ sealed class FList<T>: Iterable<T> {
 
     }
     data class Nil<T>(private val dummy: Int=0) : FList<T>() {
-        override val size: Int get() = 0
-        override val isEmpty: Boolean get() = true
-        override fun <U> map(f: (T) -> U): FList<U> { return Nil() }
-        override fun filter(f: (T) -> Boolean): FList<T> { return Nil() }
-        override fun <U> fold(base: U, f: (U, T) -> U): U {return base }
+        override val size: Int = 0
+        override val isEmpty: Boolean = true
+        override fun <U> map(f: (T) -> U): FList<U> = Nil()
+        override fun filter(f: (T) -> Boolean): FList<T> = Nil()
+        override fun <U> fold(base: U, f: (U, T) -> U): U = base
     }
 
     data class Cons<T>(val head: T, val tail: FList<T>) : FList<T>() {
-        override val size: Int
-            get() = Iterators.size(this.iterator())
+        override val size: Int = 1 + tail.size
         override val isEmpty: Boolean get() = false
 
         override fun <U> map(f: (T) -> U): FList<U> {
