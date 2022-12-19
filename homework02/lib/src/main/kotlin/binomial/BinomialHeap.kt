@@ -1,7 +1,10 @@
 package binomial
 
 import java.lang.IllegalArgumentException
+import kotlin.concurrent.timer
 import kotlin.math.min
+import kotlin.system.measureNanoTime
+import kotlin.system.measureTimeMillis
 
 /*
  * BinomialHeap - реализация биномиальной кучи
@@ -41,11 +44,9 @@ class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<Binomi
      *
      * Требуемая сложность - O(log(n))
      */
-    private fun plusImpl(first:FList<BinomialTree<T>>, second: FList<BinomialTree<T>>) : FList<BinomialTree<T>> {
-        val tree = plusImpl1(first, second)
-        return plusImpl2(tree)
-    }
-    private tailrec fun plusImpl1(first:FList<BinomialTree<T>>, second: FList<BinomialTree<T>>,
+    private fun plusImpl(first: FList<BinomialTree<T>>, second: FList<BinomialTree<T>>) : FList<BinomialTree<T>> =
+        plusImpl2(plusImpl1(first, second))
+    private fun plusImpl1(first:FList<BinomialTree<T>>, second: FList<BinomialTree<T>>,
                          result: FList<BinomialTree<T>> = FList.nil()) : FList<BinomialTree<T>> {
         if (first.isEmpty && second.isEmpty) {
             return result.reverse()
@@ -77,93 +78,78 @@ class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<Binomi
             result1
         )
     }
-    private fun getTopOrder(trees: FList<BinomialTree<T>>) : Int {
-        if (trees.isEmpty) {
-            return -1
-        }
-        return (trees as FList.Cons).head.order
-    }
-    private tailrec fun plusImpl2(heap: FList<BinomialTree<T>>,
-                          result: FList<BinomialTree<T>> = FList.nil()) : FList<BinomialTree<T>> {
-        if (heap is FList.Nil) {
-            return result.reverse()
-        }
-        heap as FList.Cons
-        val heapOrder1 = getTopOrder(heap)
-        val heapOrder2 = getTopOrder(heap.tail)
-        val resultOrder = getTopOrder(result)
 
+    private fun plusImpl2(
+        heap: FList<BinomialTree<T>>,
+        result: FList<BinomialTree<T>> = FList.nil(),
+        resultOrder: Int = -1) : FList<BinomialTree<T>> {
+        if (heap is FList.Nil) {
+            return result
+        }
         val heap1 : FList<BinomialTree<T>>
         val result1 : FList<BinomialTree<T>>
-
-
-        if (heap.tail is FList.Cons && heapOrder1 == heapOrder2) {
+        val resultOrder1 : Int
+        heap as FList.Cons
+        if (heap.tail is FList.Cons && heap.head.order == heap.tail.head.order) {
             heap1 = heap.tail.tail
-            result1 =  FList.Cons(heap.head + heap.tail.head, result)
-        } else if (result is FList.Cons && heapOrder1 == resultOrder) {
+            result1 = FList.Cons(heap.head + heap.tail.head, result)
+            resultOrder1 = heap.head.order + 1
+        } else if (result is FList.Cons && heap.head.order == resultOrder) {
             heap1 = heap.tail
             result1 = FList.Cons(heap.head + result.head, result.tail)
-        } else if (heap.tail is FList.Cons && result is FList.Cons && heapOrder2 == resultOrder) {
+            resultOrder1 = resultOrder + 1
+        } else if (heap.tail is FList.Cons && result is FList.Cons && heap.tail.head.order == resultOrder) {
             heap1 = FList.Cons(heap.head, heap.tail.tail)
             result1 = FList.Cons(heap.tail.head + result.head, result.tail)
+            resultOrder1 = resultOrder + 1
         } else {
             heap1 = heap.tail
             result1 = FList.Cons(heap.head, result)
+            resultOrder1 = heap.head.order
         }
-        return plusImpl2(heap1, result1)
+        return plusImpl2(heap1, result1, resultOrder1)
     }
 
-    override fun plus(other :BinomialHeap<T>): BinomialHeap<T> {
-        return BinomialHeap(plusImpl(this.trees, other.trees))
-    }
+    override fun plus(other :BinomialHeap<T>): BinomialHeap<T> =
+        BinomialHeap(plusImpl2(plusImpl1(this.trees, other.trees)).reverse())
 
     /*
      * добавление элемента
-     * 
+     *
      * Требуемая сложность - O(log(n))
      */
-    operator fun plus(elem: T): BinomialHeap<T> {
-        return this + BinomialHeap(flistOf(BinomialTree.single(elem)))
-    }
+    operator fun plus(elem: T): BinomialHeap<T> =
+        this + BinomialHeap(flistOf(BinomialTree.single(elem)))
 
     /*
      * минимальный элемент
      *
      * Требуемая сложность - O(log(n))
      */
-    fun top(): T {
-        return this.trees.fold((this.trees as FList.Cons<BinomialTree<T>>).head.value)
-        { acc, current ->
-            if (acc < current.value) {
-                acc
-            } else {
-                current.value
-            }
-        }
-    }
+    fun top(): T = getMinTree().value
 
     /*
      * удаление элемента
      *
      * Требуемая сложность - O(log(n))
      */
-    private tailrec fun dropImpl(
-        first: FList<BinomialTree<T>>,
-        second: FList<BinomialTree<T>>,
-        minValue : T) : FList<BinomialTree<T>> {
-        if ((second as FList.Cons).head.value === minValue) {
-            val firstTree = first.reverse().add((second as FList.Cons).tail)
-            val secondTree = second.head.children
-            return plusImpl(firstTree, secondTree)
+    private fun getMinTree() : BinomialTree<T> =
+        this.trees.fold((this.trees as FList.Cons<BinomialTree<T>>).head)
+        { acc, current ->
+            if (acc.value < current.value) {
+                acc
+            } else {
+                current
+            }
         }
-        return dropImpl(
-            FList.Cons((second as FList.Cons).head, first),
-            second.tail,
-            minValue
-        )
-    }
+
+    private fun getTreeWithoutMinTree(minTree: BinomialTree<T> = getMinTree()): FList<BinomialTree<T>> =
+        trees.filter { tree ->  tree != minTree}
+
     fun drop(): BinomialHeap<T> {
-        return BinomialHeap(dropImpl(FList.nil(), this.trees, this.top()))
+        val minTree = getMinTree()
+        val treeWithoutMinTree = getTreeWithoutMinTree(minTree)
+        return BinomialHeap(treeWithoutMinTree) + BinomialHeap(minTree.children.reverse())
     }
 }
 

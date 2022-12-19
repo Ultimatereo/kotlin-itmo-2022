@@ -26,11 +26,8 @@ interface SelfMergeable<T> {
 
 class BinomialTree<T: Comparable<T>> private constructor(val value: T, val children: FList<BinomialTree<T>>): SelfMergeable<BinomialTree<T>> {
     // порядок дерева
-    val order: Int
-        get() = log2(size.toDouble()).toInt()
-
-    private val size : Int
-        get() = 1 + children.fold(0) { acc, i -> acc + i.size }
+    private val size : Int = 1 + children.fold(0) { acc, i -> acc + i.size }
+    val order: Int = log2(size.toDouble()).toInt()
 
     /*
      * слияние деревьев
