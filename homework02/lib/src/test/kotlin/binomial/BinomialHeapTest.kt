@@ -40,7 +40,7 @@ internal class BinomialHeapTest {
 
     @Test
     fun insertionsAscending() {
-        val values = 0 .. 100000
+        val values = 0 .. 10000
 
         values.fold(BinomialHeap.single(1000)) { acc, current ->
             val result = acc + current
@@ -51,7 +51,7 @@ internal class BinomialHeapTest {
 
     @Test
     fun insertionsDescending() {
-        val values = 100000 downTo 0
+        val values = 10000 downTo 0
 
         values.fold(BinomialHeap.single(1000000)) { acc, current ->
             val result = acc + current
@@ -62,7 +62,7 @@ internal class BinomialHeapTest {
 
     @Test
     fun insertionsRandom() {
-        val values = (0 .. 100000).map { Math.random() * 100000 }
+        val values = (0 .. 10000).map { Math.random() * 100000 }
 
         values.fold(BinomialHeap.single(2000000.0)) { acc, current ->
             val topPrev = acc.top()
@@ -90,7 +90,7 @@ internal class BinomialHeapTest {
 
     @Test
     fun dropAscending() {
-        val values = 0 .. 100000
+        val values = 0 .. 10000
 
         val heapBig = values.fold(BinomialHeap.single(987654321)) { acc, current ->
             acc + current
@@ -106,7 +106,7 @@ internal class BinomialHeapTest {
 
     @Test
     fun dropDescending() {
-        val values = 100000 downTo 0
+        val values = 10000 downTo 0
 
         val heapBig = values.fold(BinomialHeap.single(987654321)) { acc, current ->
             acc + current
@@ -122,7 +122,7 @@ internal class BinomialHeapTest {
 
     @Test
     fun dropRandom() {
-        val values = (0 .. 100000).map { Math.random() * 100000 }
+        val values = (0 .. 10000).map { Math.random() * 100000 }
 
         val heapBig = values.fold(BinomialHeap.single(987654321.0)) { acc, current ->
             acc + current
@@ -139,12 +139,12 @@ internal class BinomialHeapTest {
 
     @Test
     fun mergeAscending() {
-        val values = 0 .. 200000
-        val values1 = 0 .. 100000
+        val values = 0 .. 20000
+        val values1 = 0 .. 10000
         val heapBig1 = values1.fold(BinomialHeap.single(987654321)) { acc, current ->
             acc + current
         }
-        val values2 = 100001 .. 200000
+        val values2 = 10001 .. 20000
         val heapBig2 = values2.fold(BinomialHeap.single(987654321)) { acc, current ->
             acc + current
         }
@@ -160,9 +160,9 @@ internal class BinomialHeapTest {
 
     @Test
     fun mergeDescending() {
-        val values = 200000 downTo 0
-        val values1 = 100000 downTo 0
-        val values2 = 200000 downTo 100001
+        val values = 20000 downTo 0
+        val values1 = 10000 downTo 0
+        val values2 = 20000 downTo 10001
 
         val heapBig1 = values1.fold(BinomialHeap.single(987654321)) { acc, current ->
             acc + current
@@ -182,8 +182,8 @@ internal class BinomialHeapTest {
 
     @Test
     fun mergeRandom() {
-        val values1 = (0 .. 100000).map { Math.random() * 100000 }
-        val values2 = (0 .. 100000).map { Math.random() * 100000 }
+        val values1 = (0 .. 10000).map { Math.random() * 100000 }
+        val values2 = (0 .. 10000).map { Math.random() * 100000 }
 
         val heapBig1 = values1.fold(BinomialHeap.single(987654321.0)) { acc, current ->
             acc + current

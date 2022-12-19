@@ -44,7 +44,14 @@ sealed class FList<T>: Iterable<T> {
     fun reverse(): FList<T> = fold<FList<T>>(nil()) { acc, current ->
         Cons(current, acc)
     }
-
+    // добавить все элементы из other в начало списка
+    // this: head1 ... tail1
+    // other head2 ... tail2
+    // res   head1 ... tail1 head2 ... tail2
+    //
+    fun add(other: FList<T>) : FList<T> = this.reverse().fold(other) { acc, current ->
+        Cons(current, acc)
+    }
     /*
      * Это не очень красиво, что мы заводим отдельный Nil на каждый тип
      * И вообще лучше, чтобы Nil был объектом
@@ -66,7 +73,7 @@ sealed class FList<T>: Iterable<T> {
 
         override fun next(): T {
             if (current.isEmpty) {
-                throw IllegalStateException("You can't use function next() if there is no element left!")
+                throw IllegalArgumentException("You can't use function next() if there is no element left!")
             }
             val next = (current as Cons).head
             current = (current as Cons).tail
