@@ -1,3 +1,0 @@
-
-rootProject.name = "homework01"
-
