@@ -99,11 +99,11 @@ class DefaultNDArray private constructor
     }
     private fun checkPoint(point: Point) {
         if (point.ndim != this.ndim) {
-            throw NDArrayException.IllegalPointDimensionException()
+            throw NDArrayException.IllegalGetSetDimensionException(point, shape)
         }
         for (i in 0 until point.ndim) {
-            if (point.dim(i) < 0 || point.dim(i) >= shape.dim(i)) {
-                throw NDArrayException.IllegalPointCoordinateException()
+            if (point.dim(i) < 0 || shape.dim(i) <= point.dim(i)) {
+                throw NDArrayException.IllegalGetSetCoordinateException(point, shape, i)
             }
         }
     }
@@ -121,11 +121,13 @@ class DefaultNDArray private constructor
     }
 
     override fun copy(): NDArray {
-        return DefaultNDArray(defaultValue, shape, HashMap(array))
+        return DefaultNDArray(defaultValue, shape, array.toMutableMap())
     }
 
-    override fun view(): NDArray {
-        return DefaultNDArray(defaultValue, shape, array)
+    override fun view() = object : NDArray by this {}
+
+    private operator fun getValue(ignore: Any?, ignore_: Any): NDArray {
+        return this
     }
 
     private fun getNextPoint(point: Point, shape: Shape) : DefaultPoint {
@@ -138,24 +140,21 @@ class DefaultNDArray private constructor
         return DefaultPoint(*newArray)
     }
 
-    private fun checkDimensions(other: NDArray, offset : Int) : Boolean {
+    private fun checkDimensions(other: NDArray, offset : Int) {
         for (i in 0 until this.ndim - offset) {
             if (this.dim(i) != other.dim(i)) {
-                return false
+                throw NDArrayException.IllegalAddCoordinateException(i, this.dim(i), other.dim(i))
             }
         }
-        return true
     }
 
     override fun add(other: NDArray) {
         val newArray : MutableMap<Point, Int> = HashMap()
         if (this.ndim < other.ndim) {
-            throw NDArrayException.IllegalPointDimensionException()
+            throw NDArrayException.IllegalAddDimensionException(this.ndim, other.ndim)
         }
         val offset = this.ndim - other.ndim
-        if (!checkDimensions(other, offset)) {
-            throw NDArrayException.IllegalPointDimensionException()
-        }
+        checkDimensions(other, offset)
         val startPoint = DefaultPoint(*IntArray(this.ndim){ 0 })
         var point = DefaultPoint(*IntArray(this.ndim){ 0 })
         do {
@@ -166,8 +165,13 @@ class DefaultNDArray private constructor
     }
 
     private fun reducePoint(defaultPoint: DefaultPoint, offset: Int): DefaultPoint {
-        return DefaultPoint(*defaultPoint.getArray().slice(0 until defaultPoint.ndim - offset).toIntArray())
+        val intArray = IntArray(defaultPoint.ndim - offset)
+        for (i in 0 until defaultPoint.ndim - offset) {
+            intArray[i] = defaultPoint.dim(i)
+        }
+        return DefaultPoint(*intArray)
     }
+
 
     private fun convertToMatrix(ndArray: NDArray) : Array<IntArray> {
         if (ndArray.ndim == 2) {
@@ -207,7 +211,7 @@ class DefaultNDArray private constructor
 
     override fun dot(other: NDArray): NDArray {
         if (this.ndim != 2 || other.ndim > 2) {
-            throw NDArrayException.IllegalPointDimensionException()
+            throw NDArrayException.IllegalDotDimensionException(this.ndim, other.ndim)
         }
         if (other.ndim == 1 && other.dim(0) == 1) {
             val newArray : MutableMap<Point, Int> = HashMap()
@@ -222,7 +226,8 @@ class DefaultNDArray private constructor
         val matrix1 = convertToMatrix(this)
         val matrix2 = convertToMatrix(other)
         if (matrix1[0].size != matrix2.size) {
-            throw NDArrayException.IllegalPointDimensionException()
+            throw NDArrayException.IllegalDotCoordinateException(matrix1.size,
+                matrix1[0].size, matrix2.size, matrix2[0].size)
         }
         val matrix3 = Array(matrix1.size) { IntArray(matrix2[0].size) }
         for (i in matrix1.indices) {
@@ -246,7 +251,27 @@ class DefaultNDArray private constructor
 }
 
 
-sealed class NDArrayException : Exception() {
-    class IllegalPointCoordinateException : NDArrayException()
-    class IllegalPointDimensionException : NDArrayException()
+sealed class NDArrayException (reason: String = "") : IllegalArgumentException(reason) {
+    class IllegalGetSetCoordinateException(point: Point, shape: Shape, i: Int) :
+        NDArrayException("Trying to get/set a value to the point with invalid coordinate at ${i+1} coordinate" +
+                "Got ${point.dim(i)}. Expected number between 0 and ${shape.dim(i)}")
+    class IllegalGetSetDimensionException(point: Point, shape: Shape) :
+        NDArrayException("Trying to get/set a value to the point with invalid ndimension." +
+                "Got point with ndimension ${point.ndim}. But expected: ${shape.ndim}")
+
+    class IllegalAddDimensionException(ndim: Int, ndim1: Int) :
+        NDArrayException("Trying to add ndarrays with ndimensions $ndim and $ndim1 when it's expected to be equal!")
+
+    class IllegalAddCoordinateException(i: Int, dim: Int, dim1: Int) :
+        NDArrayException("Trying to add ndarrays with different dimensions at ${i + 1} coordinate: $dim and $dim1." +
+                " But they are expected to be equal!")
+
+    class IllegalDotDimensionException(ndim: Int, ndim1: Int) :
+        NDArrayException("Trying to multiply two ndarrays with ndimensions $ndim and $ndim1. " +
+                "But the first one is expected to be equal to 2 and the second one is expected to be equal to 1 or 2!")
+
+    class IllegalDotCoordinateException(i1: Int, j1: Int, i2: Int, j2: Int) :
+        NDArrayException("You can't multiply two matrices $i1 x $j1 and $i2 x $j2. " +
+                "Second coordinate of the first matrix must be equal to the first coordinate of the second matrix!")
+
 }

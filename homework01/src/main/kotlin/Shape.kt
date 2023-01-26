@@ -46,9 +46,9 @@ class DefaultShape(private vararg val dimentions: Int): Shape {
         return dimentions.contentHashCode()
     }
 
-    override val size: Int
-        get() = dimentions.reduce{acc, i -> acc * i }
-
+    override val size: Int by lazy {
+        dimentions.reduce{acc, i -> acc * i }
+    }
 }
 
 sealed class ShapeArgumentException (reason: String = "") : IllegalArgumentException(reason) {

@@ -16,9 +16,6 @@ class DefaultPoint(private vararg val coords: Int): Point {
     override fun dim(i: Int): Int {
         return coords[i]
     }
-    fun getArray() : IntArray {
-        return coords
-    }
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
