@@ -1,11 +1,5 @@
 package binomial
 
-import java.lang.IllegalArgumentException
-import kotlin.concurrent.timer
-import kotlin.math.min
-import kotlin.system.measureNanoTime
-import kotlin.system.measureTimeMillis
-
 /*
  * BinomialHeap - реализация биномиальной кучи
  *
@@ -33,9 +27,10 @@ import kotlin.system.measureTimeMillis
  * Кучу будем хранить в порядке возрастания степеней. В head находится минимальная степень, а в самом конце максимальная
  *
  */
-class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<BinomialTree<T>>): SelfMergeable<BinomialHeap<T>> {
+class BinomialHeap<T : Comparable<T>> private constructor(val trees: FList<BinomialTree<T>>) :
+    SelfMergeable<BinomialHeap<T>> {
     companion object {
-        fun <T: Comparable<T>> single(value: T): BinomialHeap<T> =
+        fun <T : Comparable<T>> single(value: T): BinomialHeap<T> =
             BinomialHeap(FList.Cons(BinomialTree.single(value), FList.Nil()))
     }
 
@@ -44,16 +39,17 @@ class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<Binomi
      *
      * Требуемая сложность - O(log(n))
      */
-    private fun plusImpl(first: FList<BinomialTree<T>>, second: FList<BinomialTree<T>>) : FList<BinomialTree<T>> =
-        plusImpl2(plusImpl1(first, second))
-    private fun plusImpl1(first:FList<BinomialTree<T>>, second: FList<BinomialTree<T>>,
-                         result: FList<BinomialTree<T>> = FList.nil()) : FList<BinomialTree<T>> {
+
+    private tailrec fun plusImplFirstCycle(
+        first: FList<BinomialTree<T>>, second: FList<BinomialTree<T>>,
+        result: FList<BinomialTree<T>> = FList.nil()
+    ): FList<BinomialTree<T>> {
         if (first.isEmpty && second.isEmpty) {
             return result.reverse()
         }
-        val first1 : FList<BinomialTree<T>>
-        val second1 : FList<BinomialTree<T>>
-        val result1 : FList<BinomialTree<T>>
+        val first1: FList<BinomialTree<T>>
+        val second1: FList<BinomialTree<T>>
+        val result1: FList<BinomialTree<T>>
         if (first.isEmpty) {
             first1 = first
             second1 = (second as FList.Cons).tail
@@ -63,7 +59,8 @@ class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<Binomi
             second1 = second
             result1 = FList.Cons(first.head, result)
         } else if ((first as FList.Cons).head.order <
-            (second as FList.Cons).head.order) {
+            (second as FList.Cons).head.order
+        ) {
             first1 = first.tail
             second1 = second
             result1 = FList.Cons(first.head, result)
@@ -72,23 +69,24 @@ class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<Binomi
             second1 = second.tail
             result1 = FList.Cons(second.head, result)
         }
-        return plusImpl1(
+        return plusImplFirstCycle(
             first1,
             second1,
             result1
         )
     }
 
-    private fun plusImpl2(
+    private tailrec fun plusImplSecondCycle(
         heap: FList<BinomialTree<T>>,
         result: FList<BinomialTree<T>> = FList.nil(),
-        resultOrder: Int = -1) : FList<BinomialTree<T>> {
+        resultOrder: Int = -1
+    ): FList<BinomialTree<T>> {
         if (heap is FList.Nil) {
             return result
         }
-        val heap1 : FList<BinomialTree<T>>
-        val result1 : FList<BinomialTree<T>>
-        val resultOrder1 : Int
+        val heap1: FList<BinomialTree<T>>
+        val result1: FList<BinomialTree<T>>
+        val resultOrder1: Int
         heap as FList.Cons
         if (heap.tail is FList.Cons && heap.head.order == heap.tail.head.order) {
             heap1 = heap.tail.tail
@@ -107,11 +105,11 @@ class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<Binomi
             result1 = FList.Cons(heap.head, result)
             resultOrder1 = heap.head.order
         }
-        return plusImpl2(heap1, result1, resultOrder1)
+        return plusImplSecondCycle(heap1, result1, resultOrder1)
     }
 
-    override fun plus(other :BinomialHeap<T>): BinomialHeap<T> =
-        BinomialHeap(plusImpl2(plusImpl1(this.trees, other.trees)).reverse())
+    override fun plus(other: BinomialHeap<T>): BinomialHeap<T> =
+        BinomialHeap(plusImplSecondCycle(plusImplFirstCycle(this.trees, other.trees)).reverse())
 
     /*
      * добавление элемента
@@ -133,7 +131,7 @@ class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<Binomi
      *
      * Требуемая сложность - O(log(n))
      */
-    private fun getMinTree() : BinomialTree<T> =
+    private fun getMinTree(): BinomialTree<T> =
         this.trees.fold((this.trees as FList.Cons<BinomialTree<T>>).head)
         { acc, current ->
             if (acc.value < current.value) {
@@ -144,7 +142,7 @@ class BinomialHeap<T: Comparable<T>> private constructor(val trees: FList<Binomi
         }
 
     private fun getTreeWithoutMinTree(minTree: BinomialTree<T> = getMinTree()): FList<BinomialTree<T>> =
-        trees.filter { tree ->  tree != minTree}
+        trees.filter { tree -> tree != minTree }
 
     fun drop(): BinomialHeap<T> {
         val minTree = getMinTree()

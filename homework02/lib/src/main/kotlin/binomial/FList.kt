@@ -1,7 +1,5 @@
 package binomial
 
-import com.google.common.collect.Iterators
-
 /*
  * FList - реализация функционального списка
  *
@@ -16,9 +14,10 @@ import com.google.common.collect.Iterators
  *  Исключение Array-параметр в функции flistOf. Но даже в ней нельзя использовать цикл и forEach.
  *  Только обращение по индексу
  */
-sealed class FList<T>: Iterable<T> {
+sealed class FList<T> : Iterable<T> {
     // размер списка, 0 для Nil, количество элементов в цепочке для Cons
     abstract val size: Int
+
     // пустой ли списк, true для Nil, false для Cons
     abstract val isEmpty: Boolean
 
@@ -44,14 +43,16 @@ sealed class FList<T>: Iterable<T> {
     fun reverse(): FList<T> = fold<FList<T>>(nil()) { acc, current ->
         Cons(current, acc)
     }
+
     // добавить все элементы из other в начало списка
     // this: head1 ... tail1
     // other head2 ... tail2
     // res   head1 ... tail1 head2 ... tail2
     //
-    fun add(other: FList<T>) : FList<T> = this.reverse().fold(other) { acc, current ->
+    fun add(other: FList<T>): FList<T> = this.reverse().fold(other) { acc, current ->
         Cons(current, acc)
     }
+
     /*
      * Это не очень красиво, что мы заводим отдельный Nil на каждый тип
      * И вообще лучше, чтобы Nil был объектом
@@ -64,7 +65,10 @@ sealed class FList<T>: Iterable<T> {
      *
      * Также для борьбы с бойлерплейтом были введены функция и свойство nil в компаньоне
      */
-    override fun iterator(): Iterator<T> { return FListIterator(this) }
+    override fun iterator(): Iterator<T> {
+        return FListIterator(this)
+    }
+
     class FListIterator<T>(fList: FList<T>) : Iterator<T> {
         private var current = fList
         override fun hasNext(): Boolean {
@@ -81,7 +85,8 @@ sealed class FList<T>: Iterable<T> {
         }
 
     }
-    data class Nil<T>(private val dummy: Int=0) : FList<T>() {
+
+    data class Nil<T>(private val dummy: Int = 0) : FList<T>() {
         override val size: Int = 0
         override val isEmpty: Boolean = true
         override fun <U> map(f: (T) -> U): FList<U> = Nil()
@@ -94,21 +99,41 @@ sealed class FList<T>: Iterable<T> {
         override val isEmpty: Boolean get() = false
 
         override fun <U> map(f: (T) -> U): FList<U> {
-            return Cons(f(head), tail.map(f))
+            return mapImpl(Nil(), this, f)
+        }
+
+        private tailrec fun <U> mapImpl(result: FList<U>, current: FList<T>, f: (T) -> U): FList<U> {
+            if (current.isEmpty) {
+                return result.reverse()
+            }
+            current as Cons
+            return mapImpl(Cons(f(current.head), result), current.tail, f)
         }
 
         override fun filter(f: (T) -> Boolean): FList<T> {
-            if (f(head)) {
-                return Cons(head, tail.filter(f))
+            return filterImpl(Nil(), this, f)
+        }
+
+        private tailrec fun filterImpl(result: FList<T>, current: FList<T>, f: (T) -> Boolean): FList<T> {
+            if (current.isEmpty) {
+                return result.reverse()
             }
-            return tail.filter(f)
+            current as Cons
+            if (f(current.head)) {
+                return filterImpl(Cons(current.head, result), current.tail, f)
+            }
+            return filterImpl(result, current.tail, f)
         }
 
         override fun <U> fold(base: U, f: (U, T) -> U): U {
-            if (tail.isEmpty) {
-                return f(base, head)
+            return foldImpl(this, base, f)
+        }
+
+        private tailrec fun <U> foldImpl(cons: Cons<T>, base: U, f: (U, T) -> U): U {
+            if (cons.tail.isEmpty) {
+                return f(base, cons.head)
             }
-            return tail.fold(f(base, head), f)
+            return foldImpl(cons.tail as Cons<T>, f(base, cons.head), f)
         }
     }
 
@@ -121,12 +146,14 @@ sealed class FList<T>: Iterable<T> {
 // конструирование функционального списка в порядке следования элементов
 // требуемая сложность - O(n)
 
-fun <T> flistOf(vararg values : T) : FList<T> {
-    return flistOf(values.asList())
+fun <T> flistOf(vararg values: T): FList<T> {
+    return flistOfImpl(values.asList().iterator(), FList.nil())
 }
-private fun <T> flistOf(values: List<T>): FList<T> {
-    if (values.isEmpty()) {
-        return FList.Nil()
+
+private tailrec fun <T> flistOfImpl(iterator: Iterator<T>, result: FList<T>): FList<T> {
+    if (iterator.hasNext()) {
+        val next = iterator.next()
+        return flistOfImpl(iterator, FList.Cons(next, result))
     }
-    return FList.Cons(values[0], flistOf(values.subList(1, values.size)))
+    return result.reverse()
 }
